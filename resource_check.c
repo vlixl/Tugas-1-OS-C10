@@ -13,9 +13,9 @@ int main() {
     }
 
     const char *s_disk = classify(disk);
-    const char *s_mem = classify(disk);
+    const char *s_mem = classify(mem);
 
-    pritnf("DISK %.0f %s\n", disk, s_disk);
+    printf("DISK %.0f %s\n", disk, s_disk);
     printf("MEM %.0f %s\n", mem, s_mem);
 
     if (s_disk[0] == 'F' || s_mem[0] == 'F') return 2;
