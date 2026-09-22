@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 KELOMPOK="C10"   
 header() {
     echo "==================================="
@@ -121,8 +122,47 @@ vm_stop() {
     fi
 }
 
-# Dispatcher sementara, buat testing bagian Anggota 1 dulu.
-# Nanti Anggota 2 gabungin dengan snapshot create/list.
+# 5. vm_snapshot_create - membuat snapshot baru pada VM
+vm_snapshot_create() {
+    local nama_vm="$1"
+    local nama_snapshot="$2"
+
+    if [ -z "$nama_vm" ] || [ -z "$nama_snapshot" ]; then
+        echo "Error: nama VM atau nama snapshot belum diisi."
+        echo "Format: ./vm_ctl.sh snapshot create <nama_vm> <nama_snapshot>"
+        return 1
+    fi
+
+    header
+    echo "Membuat snapshot '${nama_snapshot}' pada VM '${nama_vm}'..."
+
+    if ! VBoxManage snapshot "$nama_vm" take "$nama_snapshot" >/dev/null 2>&1; then
+        echo "Gagal membuat snapshot. Pastikan nama VM benar."
+        return 1
+    fi
+
+    echo "Snapshot '${nama_snapshot}' berhasil dibuat."
+}
+
+# 6. vm_snapshot_list - menampilkan daftar snapshot pada VM
+vm_snapshot_list() {
+    local nama_vm="$1"
+
+    if [ -z "$nama_vm" ]; then
+        echo "Error: nama VM belum diisi."
+        echo "Format: ./vm_ctl.sh snapshot list <nama_vm>"
+        return 1
+    fi
+
+    header
+    echo "Daftar snapshot VM '${nama_vm}':"
+
+    if ! VBoxManage snapshot "$nama_vm" list; then
+        echo "Gagal menampilkan snapshot. Pastikan nama VM benar."
+        return 1
+    fi
+}
+
 main() {
     local cmd="$1"
     shift
@@ -140,123 +180,28 @@ main() {
         stop)
             vm_stop "$1"
             ;;
+        snapshot)
+            local snapshot_cmd="$1"
+            shift
+
+            case "$snapshot_cmd" in
+                create)
+                    vm_snapshot_create "$1" "$2"
+                    ;;
+                list)
+                    vm_snapshot_list "$1"
+                    ;;
+                *)
+                    echo "Penggunaan: ./vm_ctl.sh snapshot {create|list} <nama_vm> [nama_snapshot]"
+                    exit 1
+                    ;;
+            esac
+            ;;
         *)
-            echo "Penggunaan: ./vm_ctl.sh {list|info|start|stop} [nama_vm]"
+            echo "Penggunaan: ./vm_ctl.sh {list|info|start|stop|snapshot} [argumen]"
             exit 1
             ;;
     esac
 }
 
 main "$@"
-#!/usr/bin/env bash
-set -euo pipefail
-
-usage() {
-  cat <<'EOF'
-Usage:
-  ./vm_ctl.sh list
-  ./vm_ctl.sh info <vm_name>
-  ./vm_ctl.sh start <vm_name>
-  ./vm_ctl.sh stop <vm_name>
-  ./vm_ctl.sh snapshot create <vm_name> <snapshot_name>
-  ./vm_ctl.sh snapshot list <vm_name>
-EOF
-}
-
-find_vboxmanage() {
-  if [[ -n "${VBOXMANAGE:-}" ]]; then
-    printf '%s\n' "$VBOXMANAGE"
-  elif command -v VBoxManage >/dev/null 2>&1; then
-    command -v VBoxManage
-  elif command -v VBoxManage.exe >/dev/null 2>&1; then
-    command -v VBoxManage.exe
-  elif [[ -x "/mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe" ]]; then
-    printf '%s\n' "/mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe"
-  elif [[ -x "/c/Program Files/Oracle/VirtualBox/VBoxManage.exe" ]]; then
-    printf '%s\n' "/c/Program Files/Oracle/VirtualBox/VBoxManage.exe"
-  else
-    echo "VBoxManage not found. Install VirtualBox or set VBOXMANAGE=/path/to/VBoxManage." >&2
-    exit 1
-  fi
-}
-
-need_vm() {
-  if [[ $# -lt 1 ]]; then
-    usage >&2
-    exit 1
-  fi
-}
-
-vbox="$(find_vboxmanage)"
-cmd="${1:-}"
-
-vm_list() {
-  "$vbox" list vms
-}
-
-vm_info() {
-  "$vbox" showvminfo "$1"
-}
-
-vm_start() {
-  "$vbox" startvm "$1" --type headless
-}
-
-vm_stop() {
-  "$vbox" controlvm "$1" acpipowerbutton
-}
-
-vm_snapshot_create() {
-  "$vbox" snapshot "$1" take "$2"
-}
-
-vm_snapshot_list() {
-  "$vbox" snapshot "$1" list
-}
-
-case "$cmd" in
-  list)
-    vm_list
-    ;;
-  info)
-    shift
-    need_vm "$@"
-    vm_info "$1"
-    ;;
-  start)
-    shift
-    need_vm "$@"
-    vm_start "$1"
-    ;;
-  stop)
-    shift
-    need_vm "$@"
-    vm_stop "$1"
-    ;;
-  snapshot)
-    shift
-    snapshot_cmd="${1:-}"
-    shift || true
-    case "$snapshot_cmd" in
-      create)
-        if [[ $# -lt 2 ]]; then
-          usage >&2
-          exit 1
-        fi
-        vm_snapshot_create "$1" "$2"
-        ;;
-      list)
-        need_vm "$@"
-        vm_snapshot_list "$1"
-        ;;
-      *)
-        usage >&2
-        exit 1
-        ;;
-    esac
-    ;;
-  *)
-    usage >&2
-    exit 1
-    ;;
-esac
