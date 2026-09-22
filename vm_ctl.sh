@@ -141,7 +141,7 @@ vm_snapshot_create() {
         return 1
     fi
 
-    echo "Snapshot '${nama_snapshot}' berhasil dibuat."
+    echo "Snapshot '${nama_snapshot}' berhasil dibuat pada $(date '+%Y-%m-%d %H:%M:%S')."
 }
 
 # 6. vm_snapshot_list - menampilkan daftar snapshot pada VM
@@ -157,10 +157,30 @@ vm_snapshot_list() {
     header
     echo "Daftar snapshot VM '${nama_vm}':"
 
-    if ! VBoxManage snapshot "$nama_vm" list; then
+    local snapshots
+    snapshots=$(VBoxManage snapshot "$nama_vm" list 2>/dev/null)
+
+    if [ $? -ne 0 ]; then
         echo "Gagal menampilkan snapshot. Pastikan nama VM benar."
         return 1
     fi
+
+    if [ -z "$snapshots" ]; then
+        echo "Tidak ada snapshot pada VM '${nama_vm}'."
+        return 0
+    fi
+
+    local i=1
+    while IFS= read -r line; do
+        case "$line" in
+            *Name:*)
+                local nama_snapshot
+                nama_snapshot=$(echo "$line" | sed -E 's/.*Name: ([^()]+).*/\1/' | sed 's/[[:space:]]*$//')
+                echo "${i}. ${nama_snapshot}"
+                i=$((i + 1))
+                ;;
+        esac
+    done <<< "$snapshots"
 }
 
 main() {
