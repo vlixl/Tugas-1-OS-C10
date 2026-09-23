@@ -1,4 +1,5 @@
 #!/bin/bash
+export LC_ALL=C
 
 # sysinfo.sh dijalankan di dalam VM (guest)
 # Bagian Jihan: info OS/kernel, jumlah acc, jumlah process, deteksi virtulaisasi, dan tabel laporan
