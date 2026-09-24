@@ -151,7 +151,11 @@ vm_snapshot_create() {
     header
     echo "Membuat snapshot '${nama_snapshot}' pada VM '${nama_vm}'..."
 
-    if ! "$VBOXMANAGE" snapshot "$nama_vm" take "$nama_snapshot" >/dev/null 2>&1; then
+    local waktu
+    waktu=$(date '+%Y-%m-%d_%H-%M-%S')
+    local nama_snapshot_final="${nama_snapshot}_${waktu}"
+
+    if ! "$VBOXMANAGE" snapshot "$nama_vm" take "$nama_snapshot_final" >/dev/null 2>&1; then
         echo "Gagal membuat snapshot. Pastikan nama VM benar."
         return 1
     fi
