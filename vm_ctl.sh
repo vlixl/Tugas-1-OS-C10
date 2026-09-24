@@ -122,7 +122,9 @@ vm_stop() {
     fi
 }
 
-# 5. vm_snapshot_create - membuat snapshot baru pada VM
+# 5. vm_snapshot_create
+# Alur: menerima nama VM dan nama snapshot, validasi input, lalu membuat snapshot.
+# Justifikasi: snapshot dipakai sebagai checkpoint kondisi VM sebelum/sesudah perubahan.
 vm_snapshot_create() {
     local nama_vm="$1"
     local nama_snapshot="$2"
@@ -144,7 +146,9 @@ vm_snapshot_create() {
     echo "Snapshot '${nama_snapshot}' berhasil dibuat pada $(date '+%Y-%m-%d %H:%M:%S')."
 }
 
-# 6. vm_snapshot_list - menampilkan daftar snapshot pada VM
+# 6. vm_snapshot_list
+# Alur: menerima nama VM, mengambil daftar snapshot, lalu menampilkannya dalam format bernomor.
+# Justifikasi: output bernomor lebih mudah dibaca dan sesuai contoh output tugas.
 vm_snapshot_list() {
     local nama_vm="$1"
 
@@ -183,7 +187,9 @@ vm_snapshot_list() {
     done <<< "$snapshots"
 }
 
-main() {
+# main - dispatcher utama untuk membaca command dari user
+# Alur: command pertama menentukan fitur yang dijalankan, lalu argumen berikutnya diteruskan ke fungsi terkait.
+# Justifikasi: setiap fitur dipisah dalam fungsi masing-masing, lalu main() mengatur fungsi mana yang dijalankan sesuai command user.
     local cmd="$1"
     shift
 
