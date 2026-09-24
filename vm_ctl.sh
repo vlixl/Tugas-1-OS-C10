@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 KELOMPOK="C10"   
+
+if [ -z "${VBOX_USER_HOME:-}" ] && [ -d "$HOME/.VirtualBox" ]; then
+    export VBOX_USER_HOME="$HOME/.VirtualBox"
+fi
+
+if command -v VBoxManage >/dev/null 2>&1; then
+    VBOXMANAGE="VBoxManage"
+elif [ -x "/c/Program Files/Oracle/VirtualBox/VBoxManage.exe" ]; then
+    VBOXMANAGE="/c/Program Files/Oracle/VirtualBox/VBoxManage.exe"
+else
+    VBOXMANAGE="VBoxManage"
+fi
+
 header() {
     echo "==================================="
     echo "TUGAS 1 OS - KELOMPOK ${KELOMPOK}"
@@ -14,7 +27,7 @@ vm_list() {
     echo "Daftar VM terdaftar:"
 
     local vms
-    vms=$(VBoxManage list vms 2>/dev/null)
+    vms=$("$VBOXMANAGE" list vms 2>/dev/null)
 
     if [ -z "$vms" ]; then
         echo "Tidak ada VM yang terdaftar."
@@ -44,7 +57,7 @@ vm_info() {
     header
 
     local info
-    info=$(VBoxManage showvminfo "$nama_vm" --machinereadable 2>/dev/null)
+    info=$("$VBOXMANAGE" showvminfo "$nama_vm" --machinereadable 2>/dev/null)
 
     if [ -z "$info" ]; then
         echo "Error: VM '${nama_vm}' tidak ditemukan."
@@ -75,14 +88,14 @@ vm_start() {
     header
     echo "Menyalakan VM '${nama_vm}' secara headless..."
 
-    if ! VBoxManage startvm "$nama_vm" --type headless >/dev/null 2>&1; then
+    if ! "$VBOXMANAGE" startvm "$nama_vm" --type headless >/dev/null 2>&1; then
         echo "Gagal menyalakan VM '${nama_vm}'. Pastikan nama VM benar dan VM belum menyala."
         return 1
     fi
 
     sleep 2
     local status
-    status=$(VBoxManage showvminfo "$nama_vm" --machinereadable 2>/dev/null \
+    status=$("$VBOXMANAGE" showvminfo "$nama_vm" --machinereadable 2>/dev/null \
         | grep -m1 '^VMState=' | cut -d= -f2 | tr -d '"')
 
     echo "VM '${nama_vm}' berhasil dinyalakan. Status: ${status}"
@@ -101,7 +114,7 @@ vm_stop() {
     header
     echo "Mematikan VM '${nama_vm}' secara aman..."
 
-    if ! VBoxManage controlvm "$nama_vm" acpipowerbutton >/dev/null 2>&1; then
+    if ! "$VBOXMANAGE" controlvm "$nama_vm" acpipowerbutton >/dev/null 2>&1; then
         echo "Gagal mengirim sinyal shutdown ke VM '${nama_vm}'. Pastikan nama VM benar dan VM sedang menyala."
         return 1
     fi
@@ -110,7 +123,7 @@ vm_stop() {
     local status="running"
     while [ "$status" != "poweroff" ] && [ "$tries" -lt 15 ]; do
         sleep 2
-        status=$(VBoxManage showvminfo "$nama_vm" --machinereadable 2>/dev/null \
+        status=$("$VBOXMANAGE" showvminfo "$nama_vm" --machinereadable 2>/dev/null \
             | grep -m1 '^VMState=' | cut -d= -f2 | tr -d '"')
         tries=$((tries + 1))
     done
@@ -122,7 +135,9 @@ vm_stop() {
     fi
 }
 
-# 5. vm_snapshot_create - membuat snapshot baru pada VM
+# 5. vm_snapshot_create
+# Alur: menerima nama VM dan nama snapshot, validasi input, lalu membuat snapshot.
+# Justifikasi: snapshot dipakai sebagai checkpoint kondisi VM sebelum/sesudah perubahan.
 vm_snapshot_create() {
     local nama_vm="$1"
     local nama_snapshot="$2"
@@ -136,7 +151,11 @@ vm_snapshot_create() {
     header
     echo "Membuat snapshot '${nama_snapshot}' pada VM '${nama_vm}'..."
 
-    if ! VBoxManage snapshot "$nama_vm" take "$nama_snapshot" >/dev/null 2>&1; then
+    local waktu
+    waktu=$(date '+%Y-%m-%d_%H-%M-%S')
+    local nama_snapshot_final="${nama_snapshot}_${waktu}"
+
+    if ! "$VBOXMANAGE" snapshot "$nama_vm" take "$nama_snapshot_final" >/dev/null 2>&1; then
         echo "Gagal membuat snapshot. Pastikan nama VM benar."
         return 1
     fi
@@ -144,7 +163,9 @@ vm_snapshot_create() {
     echo "Snapshot '${nama_snapshot}' berhasil dibuat pada $(date '+%Y-%m-%d %H:%M:%S')."
 }
 
-# 6. vm_snapshot_list - menampilkan daftar snapshot pada VM
+# 6. vm_snapshot_list
+# Alur: menerima nama VM, mengambil daftar snapshot, lalu menampilkannya dalam format bernomor.
+# Justifikasi: output bernomor lebih mudah dibaca dan sesuai contoh output tugas.
 vm_snapshot_list() {
     local nama_vm="$1"
 
@@ -158,7 +179,7 @@ vm_snapshot_list() {
     echo "Daftar snapshot VM '${nama_vm}':"
 
     local snapshots
-    snapshots=$(VBoxManage snapshot "$nama_vm" list 2>/dev/null)
+    snapshots=$("$VBOXMANAGE" snapshot "$nama_vm" list 2>/dev/null)
 
     if [ $? -ne 0 ]; then
         echo "Gagal menampilkan snapshot. Pastikan nama VM benar."
@@ -183,6 +204,9 @@ vm_snapshot_list() {
     done <<< "$snapshots"
 }
 
+# main - dispatcher utama untuk membaca command dari user
+# Alur: command pertama menentukan fitur yang dijalankan, lalu argumen berikutnya diteruskan ke fungsi terkait.
+# Justifikasi: setiap fitur dipisah dalam fungsi masing-masing, lalu main() mengatur fungsi mana yang dijalankan sesuai command user.
 main() {
     local cmd="$1"
     shift
