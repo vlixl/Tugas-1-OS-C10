@@ -1,4 +1,5 @@
 #!/bin/bash
+export LC_ALL=C
 
 # sysinfo.sh dijalankan di dalam VM (guest)
 # Bagian Jihan: info OS/kernel, jumlah acc, jumlah process, deteksi virtulaisasi, dan tabel laporan
@@ -8,7 +9,7 @@ KELOMPOK="C10"
 OUT="sysinfo_report.txt"
 
 # Cari executable C di folder yang sama dengan script ini.
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || exit 1
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 CHECKER="$SCRIPT_DIR/resource_check"
 
 banner(){
@@ -83,23 +84,17 @@ check_resources(){
 
 	# printf mengirim dua angka, disk lalu memori, lewat pipe ke stdin C.
 	# Command substitution menangkap stdout C ke variabel RESOURCE_RESULT.
-	# Format keluaran C: DISK <angka> <status>, lalu MEM <angka> <status>.
-	if RESOURCE_RESULT=$(printf '%s %s\n' "$DISK_USAGE" "$MEM_USAGE" | "$CHECKER"); then
-		RESOURCE_CODE=0
-	else
-		# Simpan $? langsung, sebelum menjalankan perintah lain.
-		RESOURCE_CODE=$?
-	fi
+	# Format keluaran Cg: DISK <angka> <status>, lalu MEM <angka> <status>.
+	RESOURCE_RESULT=$(printf '%s %s\n' "$DISK_USAGE" "$MEM_USAGE" | "$CHECKER")
 
-	# 0=PASS, 1=WARN, 2=FAIL semuanya merupakan hasil pemeriksaan yang sah.
-	# 3 berarti input ditolak. Kode lainnya juga dianggap error eksekusi.
-	case "$RESOURCE_CODE" in
-		0|1|2) ;;
-		*)
-			echo "Program C gagal dijalankan (exit code $RESOURCE_CODE)." >&2
-			return 1
-			;;
-	esac
+	# Simpan $? langsung, sebelum menjalankan perintah lain.
+	RESOURCE_CODE=$?
+
+	# 0=PASS, 1=WARN, 2=FAIL, sisanya ditolak
+	if [[ ! "$RESOURCE_CODE" =~ ^[012]$ ]]; then
+		echo "Program C gagal dijalankan (exit code $RESOURCE_CODE)." >&2
+		return 1
+	fi
 
 	# Baca setiap baris hasil C sebagai tiga kolom.
 	# Contoh: DISK 80 WARN -> metric=DISK, value=80, status=WARN.
@@ -162,6 +157,7 @@ make_report(){
 		row "Virtualization" "Hypervisor" "$VIRT_STATUS" "$VIRT_DETAIL"
 		row "Disk" "$DISK_DISPLAY" "$DISK_STATUS" "Filesystem /"
 		row "Memori" "$MEM_DISPLAY" "$MEM_STATUS" "RAM: total - available"
+		row "Uptime" "Waktu sejak boot" "PASS" "$UPTIME"
 		border
 	} > "$OUT"
 }

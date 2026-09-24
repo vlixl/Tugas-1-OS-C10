@@ -1,0 +1,14 @@
+==========================================================================
+                       TUGAS 1 OS - KELOMPOK C10
+==========================================================================
++----------------+----------------------+--------+---------------------------+
+| Check Category | Item                 | Status | Details                   |
++----------------+----------------------+--------+---------------------------+
+| OS             | Linux Mint 22.3      | PASS   | Kernel 6.17.0             |
+| Users          | Regular accounts     | PASS   | 1  akun                   |
+| Processes      | Running              | PASS   | 602 proses berjalan       |
+| Virtualization | Hypervisor           | FAIL   | Tidak terdeteksi (mesin fisik) |
+| Disk           | 28%                  | PASS   | Filesystem /              |
+| Memori         | 43.26%               | PASS   | RAM: total - available    |
+| Uptime         | Waktu sejak boot     | PASS   | 1 hari 0 jam 21 menit     |
++----------------+----------------------+--------+---------------------------+
